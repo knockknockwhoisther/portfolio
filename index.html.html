@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nihal Pareek — Video Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --black:#080807;
+  --white:#f0ece3;
+  --dim:#7a7570;
+  --line:rgba(240,236,227,0.1);
+  --serif:'Cormorant Garamond',Georgia,serif;
+  --sans:'Inter',sans-serif;
+  --mono:'Space Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{background:var(--black);color:var(--white);font-family:var(--sans);overflow-x:hidden;cursor:none}
+
+/* ── CURSOR ── */
+#dot{position:fixed;width:5px;height:5px;background:var(--white);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);will-change:left,top}
+#ring{position:fixed;width:34px;height:34px;border:1px solid rgba(240,236,227,.3);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .25s,height .25s,border-color .25s,border-radius .25s;will-change:left,top}
+.cur-grow #ring{width:64px;height:64px;border-color:rgba(240,236,227,.5)}
+.cur-text #ring{width:80px;height:80px;border-radius:4px;border-color:rgba(240,236,227,.4)}
+
+/* ── LOADER ── */
+#loader{
+  position:fixed;inset:0;background:var(--black);z-index:8000;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  padding:40px 5vw;transition:opacity .6s ease,visibility .6s ease;
+}
+#loader.done{opacity:0;visibility:hidden}
+.loader-pct{
+  font-family:var(--mono);font-size:11px;letter-spacing:.2em;
+  color:var(--dim);margin-bottom:16px;
+}
+.loader-bar-track{width:100%;height:1px;background:rgba(240,236,227,.1)}
+.loader-bar-fill{height:100%;background:var(--white);width:0%;transition:width .05s linear}
+.loader-name{
+  font-family:var(--serif);font-weight:300;font-style:italic;
+  font-size:clamp(48px,8vw,120px);line-height:.9;
+  color:rgba(240,236,227,.06);margin-top:20px;
+  letter-spacing:-.03em;
+}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:500;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:22px 5vw;
+  transition:background .4s,backdrop-filter .4s;
+}
+nav.scrolled{background:rgba(8,8,7,.85);backdrop-filter:blur(16px)}
+nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:var(--line);opacity:0;transition:opacity .4s}
+nav.scrolled::after{opacity:1}
+.nav-logo{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--white);text-decoration:none;opacity:.6;transition:opacity .2s}
+.nav-logo:hover{opacity:1}
+.nav-r{display:flex;align-items:center;gap:32px}
+.nav-links{display:flex;gap:28px;list-style:none}
+.nav-links a{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--white);text-decoration:none;opacity:.35;transition:opacity .2s}
+.nav-links a:hover{opacity:1}
+.nav-avail{
+  font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--white);opacity:.4;
+  display:flex;align-items:center;gap:8px;
+}
+.nav-avail::before{content:'';width:6px;height:6px;border-radius:50%;background:#4ade80;animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── HERO ── */
+#hero{
+  position:relative;width:100%;height:100vh;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  overflow:hidden;
+}
+.hero-video-wrap{
+  position:absolute;inset:0;z-index:0;
+  background:var(--black);
+}
+.hero-video-wrap iframe{
+  position:absolute;
+  /* oversized to hide YT UI bars */
+  top:50%;left:50%;
+  width:177.78vh;height:100vh;
+  min-width:100%;min-height:56.25vw;
+  transform:translate(-50%,-50%);
+  border:none;pointer-events:none;
+  opacity:.35;
+}
+.hero-overlay{
+  position:absolute;inset:0;z-index:1;
+  background:linear-gradient(to top, rgba(8,8,7,1) 0%, rgba(8,8,7,.4) 50%, rgba(8,8,7,.2) 100%);
+}
+.hero-content{
+  position:relative;z-index:2;
+  padding:0 5vw 72px;
+}
+.hero-eyebrow{
+  font-family:var(--mono);font-size:9px;letter-spacing:.3em;
+  text-transform:uppercase;color:var(--dim);
+  margin-bottom:20px;
+  display:flex;align-items:center;gap:14px;
+  opacity:0;animation:fadeUp .7s .2s forwards;
+}
+.hero-eyebrow::before{content:'';width:28px;height:1px;background:var(--dim)}
+.hero-h1{
+  font-family:var(--serif);font-weight:300;
+  font-size:clamp(72px,13vw,200px);
+  line-height:.88;letter-spacing:-.03em;
+  color:var(--white);
+  overflow:hidden;
+}
+.hero-h1 .line{display:block;overflow:hidden}
+.hero-h1 .line span{display:block;transform:translateY(110%);animation:slideUp 1s cubic-bezier(.16,1,.3,1) forwards}
+.hero-h1 .line:nth-child(1) span{animation-delay:.15s}
+.hero-h1 .line:nth-child(2) span{animation-delay:.28s;font-style:italic;color:rgba(240,236,227,.5)}
+.hero-meta{
+  display:flex;justify-content:space-between;align-items:flex-end;
+  margin-top:36px;padding-top:24px;border-top:1px solid var(--line);
+  opacity:0;animation:fadeUp .7s .8s forwards;
+}
+.hero-desc{font-size:13px;line-height:1.85;color:var(--dim);max-width:400px;font-weight:300}
+.hero-desc strong{color:var(--white);font-weight:400}
+.hero-scroll-hint{
+  font-family:var(--mono);font-size:9px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--dim);
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+}
+.hero-scroll-hint::after{
+  content:'';width:1px;height:52px;background:var(--dim);
+  animation:scrollLine 2s ease-in-out infinite;
+}
+@keyframes scrollLine{0%,100%{opacity:.3;transform:scaleY(1)}50%{opacity:1;transform:scaleY(1.1)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes slideUp{from{transform:translateY(110%)}to{transform:translateY(0)}}
+
+/* ── WORK GRID ── */
+#work{padding:0 5vw 120px}
+
+.work-header{
+  display:flex;justify-content:space-between;align-items:baseline;
+  padding:80px 0 48px;
+  border-bottom:1px solid var(--line);
+  margin-bottom:40px;
+}
+.work-header h2{
+  font-family:var(--serif);font-weight:300;
+  font-size:clamp(32px,5vw,72px);line-height:1;
+  color:var(--white);
+}
+.work-header h2 em{font-style:italic;color:var(--dim)}
+.work-count{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--dim)}
+
+.projects-grid{
+  display:grid;
+  grid-template-columns:repeat(12,1fr);
+  gap:3px;
+}
+/* project card */
+.pc{
+  position:relative;overflow:hidden;cursor:pointer;
+  background:#111;
+}
+/* layout variants */
+.pc.wide{grid-column:span 8}
+.pc.narrow{grid-column:span 4}
+.pc.half{grid-column:span 6}
+.pc.full{grid-column:span 12}
+
+.pc-thumb{
+  width:100%;aspect-ratio:16/9;
+  background:#111;overflow:hidden;
+  position:relative;
+}
+.pc.tall .pc-thumb{aspect-ratio:9/16}
+.pc-thumb iframe{
+  position:absolute;top:50%;left:50%;
+  width:177.78%;height:100%;
+  min-width:100%;min-height:56.25%;
+  transform:translate(-50%,-50%);
+  border:none;pointer-events:none;
+  transition:transform .6s cubic-bezier(.16,1,.3,1),opacity .4s;
+  opacity:.7;
+}
+.pc:hover .pc-thumb iframe{transform:translate(-50%,-50%) scale(1.04);opacity:1}
+
+.pc-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(to top, rgba(8,8,7,.9) 0%, transparent 60%);
+  pointer-events:none;
+}
+.pc-info{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:24px;
+  transform:translateY(8px);
+  transition:transform .4s cubic-bezier(.16,1,.3,1);
+}
+.pc:hover .pc-info{transform:translateY(0)}
+.pc-num{
+  font-family:var(--mono);font-size:9px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--dim);margin-bottom:6px;
+}
+.pc-title{
+  font-family:var(--serif);font-weight:300;
+  font-size:clamp(16px,2vw,26px);color:var(--white);line-height:1.1;
+  margin-bottom:6px;
+}
+.pc-tags{display:flex;gap:6px;flex-wrap:wrap}
+.pc-tag{
+  font-family:var(--mono);font-size:8px;letter-spacing:.12em;
+  text-transform:uppercase;color:rgba(240,236,227,.5);
+  border:1px solid rgba(240,236,227,.15);
+  padding:2px 8px;
+}
+/* open button */
+.pc-open{
+  position:absolute;top:16px;right:16px;
+  width:36px;height:36px;border-radius:50%;
+  border:1px solid rgba(240,236,227,.25);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transform:scale(.8);
+  transition:opacity .3s,transform .3s,background .2s;
+}
+.pc-open svg{width:14px;height:14px;stroke:var(--white);fill:none;stroke-width:1.5}
+.pc:hover .pc-open{opacity:1;transform:scale(1)}
+.pc-open:hover{background:var(--white)}
+.pc-open:hover svg{stroke:var(--black)}
+
+/* ── LIGHTBOX ── */
+#lb{
+  position:fixed;inset:0;z-index:2000;
+  background:rgba(8,8,7,.97);
+  display:flex;flex-direction:column;
+  opacity:0;visibility:hidden;
+  transition:opacity .4s,visibility .4s;
+  overflow-y:auto;
+}
+#lb.open{opacity:1;visibility:visible}
+.lb-top{
+  position:sticky;top:0;z-index:10;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:20px 5vw;background:rgba(8,8,7,.9);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);flex-shrink:0;
+}
+.lb-title-small{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.lb-close{
+  width:36px;height:36px;border-radius:50%;
+  border:1px solid rgba(240,236,227,.2);
+  background:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .2s,border-color .2s;
+}
+.lb-close svg{width:14px;height:14px;stroke:var(--white);fill:none;stroke-width:1.5}
+.lb-close:hover{background:var(--white)}
+.lb-close:hover svg{stroke:var(--black)}
+
+.lb-body{padding:60px 5vw 80px;max-width:1100px;margin:0 auto;width:100%}
+.lb-video-pair{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:3px;background:rgba(240,236,227,.08);
+  margin-bottom:48px;
+}
+.lb-vid-side{position:relative;background:var(--black)}
+.lb-vid-side iframe{display:block;width:100%;border:none}
+.lb-vid-side iframe.w{aspect-ratio:16/9}
+.lb-vid-side iframe.t{aspect-ratio:9/16;max-height:480px}
+.lb-vtag{
+  position:absolute;top:10px;left:10px;
+  font-family:var(--mono);font-size:8px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--white);
+  background:rgba(8,8,7,.8);padding:4px 9px;z-index:2;pointer-events:none;
+}
+.lb-meta{
+  display:flex;gap:0;border:1px solid var(--line);margin-bottom:40px;flex-wrap:wrap;
+}
+.lb-met{padding:14px 20px;border-right:1px solid var(--line);flex:1;min-width:120px}
+.lb-met:last-child{border-right:none}
+.lb-met-l{font-family:var(--mono);font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+.lb-met-v{font-size:12px;color:var(--white)}
+.lb-case{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:0;background:rgba(240,236,227,.05);margin-bottom:48px;
+}
+.lb-cblock{padding:28px 28px;border-right:1px solid var(--line)}
+.lb-cblock:last-child{border-right:none}
+.lb-cblock-l{font-family:var(--mono);font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+.lb-cblock p{font-size:13px;line-height:1.75;color:rgba(240,236,227,.6)}
+.lb-stat{font-family:var(--serif);font-size:30px;font-style:italic;color:var(--white);margin-top:8px}
+
+/* ── RESULTS ── */
+#results{
+  background:#f0ece3;color:#080807;
+  padding:120px 5vw;
+}
+.res-hl{
+  font-family:var(--serif);font-weight:300;
+  font-size:clamp(36px,6vw,88px);line-height:.95;
+  letter-spacing:-.02em;margin-bottom:80px;
+  max-width:14ch;
+}
+.res-hl em{font-style:italic;color:#8a8478}
+.rg{display:grid;grid-template-columns:1.45fr 1fr;gap:3px;background:#c8c4bc;margin-bottom:3px}
+.rg2{display:grid;grid-template-columns:1fr 1.45fr;gap:3px;background:#c8c4bc}
+.rc{background:#f0ece3;padding:48px 40px;transition:background .25s;position:relative;overflow:hidden}
+.rc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:#080807;transform:scaleX(0);transform-origin:left;transition:transform .5s cubic-bezier(.16,1,.3,1)}
+.rc:hover{background:#e8e4dc}
+.rc:hover::before{transform:scaleX(1)}
+.rc-cl{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#8a8478;margin-bottom:12px}
+.rc-t{font-family:var(--serif);font-weight:300;font-size:clamp(20px,2.5vw,34px);line-height:1.1;color:#080807;margin-bottom:28px}
+.rc-ns{display:flex;gap:32px;padding:16px 0;border-top:1px solid #c8c4bc;border-bottom:1px solid #c8c4bc;margin-bottom:20px}
+.rc-n-l{font-family:var(--mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:#8a8478;margin-bottom:5px}
+.rc-n-v{font-family:var(--serif);font-size:36px;font-weight:300;line-height:1;color:#080807}
+.rc-n-d{font-family:var(--mono);font-size:9px;color:#3a3530;margin-top:3px}
+.rc-n-d.up::before{content:'↑ '}
+.bar-r{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.bar-rl{font-family:var(--mono);font-size:8px;text-transform:uppercase;color:#8a8478;width:40px;flex-shrink:0}
+.bar-t{flex:1;height:2px;background:#ddd9d0;overflow:hidden}
+.bar-f{height:100%;background:#080807;transform:scaleX(0);transform-origin:left;transition:transform 1.2s cubic-bezier(.16,1,.3,1)}
+.rc-story{font-size:12.5px;line-height:1.8;color:#5a5550;padding-left:14px;border-left:2px solid #080807;margin:16px 0}
+.rc-tags{display:flex;flex-wrap:wrap;gap:6px}
+.rc-tag{font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:#8a8478;border:1px solid #c8c4bc;padding:3px 8px}
+.rc-vid{margin:16px 0;background:#e0dcd4;overflow:hidden}
+.rc-vid iframe{display:block;width:100%;border:none}
+.rc-vid iframe.sh{aspect-ratio:9/16;max-height:300px}
+
+/* ── CLIENTS ── */
+#clients{padding:100px 5vw;overflow:hidden}
+.clients-hl{
+  font-family:var(--serif);font-weight:300;
+  font-size:clamp(28px,4vw,60px);line-height:1;
+  color:var(--white);margin-bottom:60px;
+}
+.clients-hl em{font-style:italic;color:var(--dim)}
+/* marquee */
+.mq-wrap{
+  overflow:hidden;margin:0 -5vw;
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  padding:18px 0;margin-bottom:64px;
+}
+.mq-track{display:flex;white-space:nowrap;animation:mq 28s linear infinite}
+.mq-track:hover{animation-play-state:paused}
+.mq-item{
+  font-family:var(--serif);font-size:26px;font-weight:300;font-style:italic;
+  color:rgba(240,236,227,.18);padding:0 32px;flex-shrink:0;
+  transition:color .3s;cursor:default;
+}
+.mq-item:hover{color:rgba(240,236,227,.7)}
+.mq-sep{color:rgba(240,236,227,.06);padding:0;font-style:normal}
+@keyframes mq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+.cwall{
+  display:grid;grid-template-columns:repeat(5,1fr);
+  gap:1px;background:rgba(240,236,227,.07);
+}
+.ctile{
+  background:#080807;padding:28px 22px 32px;
+  display:flex;flex-direction:column;gap:10px;
+  transition:background .2s;
+}
+.ctile:hover{background:#111009}
+.ctile-mark{
+  width:34px;height:34px;border-radius:50%;
+  border:1px solid rgba(240,236,227,.1);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--serif);font-size:15px;font-style:italic;
+  color:rgba(240,236,227,.35);
+}
+.ctile-name{font-family:var(--serif);font-size:14px;font-weight:300;color:rgba(240,236,227,.55);line-height:1.2}
+.ctile:hover .ctile-name{color:rgba(240,236,227,.85)}
+.ctile-sub{font-family:var(--mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+
+/* ── JOURNEY ── */
+#journey{padding:120px 5vw;background:#0c0b09}
+.journey-layout{display:grid;grid-template-columns:1fr 1.4fr;gap:100px;align-items:start}
+.journey-left h2{
+  font-family:var(--serif);font-weight:300;
+  font-size:clamp(36px,5vw,70px);line-height:1.0;
+  color:var(--white);position:sticky;top:120px;
+}
+.journey-left h2 em{font-style:italic;color:var(--dim)}
+.jlist{position:relative;padding-left:28px}
+.jlist::before{content:'';position:absolute;left:0;top:8px;bottom:40px;width:1px;background:linear-gradient(to bottom,rgba(240,236,227,.15),transparent)}
+.ji{
+  position:relative;padding-bottom:52px;
+  opacity:0;transform:translateX(-12px);
+  transition:opacity .8s,transform .8s cubic-bezier(.16,1,.3,1);
+}
+.ji.on{opacity:1;transform:none}
+.ji::before{
+  content:'';position:absolute;left:-32px;top:7px;
+  width:7px;height:7px;border-radius:50%;
+  border:1px solid rgba(240,236,227,.25);background:#0c0b09;
+}
+.ji.major::before{background:var(--white);border-color:var(--white);width:9px;height:9px;left:-33px;top:6px}
+.ji-yr{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin-bottom:7px}
+.ji-t{font-family:var(--serif);font-size:clamp(17px,1.8vw,24px);font-weight:300;color:var(--white);margin-bottom:9px}
+.ji-b{font-size:12.5px;line-height:1.8;color:var(--dim);max-width:460px}
+.ji-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:12px}
+.ji-tag{font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border:1px solid rgba(240,236,227,.1);padding:2px 8px}
+
+/* ── PLAYGROUND ── */
+#playground{padding:120px 5vw}
+.pg-top{
+  display:grid;grid-template-columns:1fr auto;
+  align-items:end;gap:32px;margin-bottom:48px;
+}
+.pg-top h2{
+  font-family:var(--serif);font-weight:300;
+  font-size:clamp(30px,4.5vw,62px);line-height:1;
+  color:var(--white);
+}
+.pg-top h2 em{font-style:italic;color:var(--dim)}
+.ftabs{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.ftab{
+  font-family:var(--mono);font-size:9px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--dim);
+  border:1px solid rgba(240,236,227,.1);
+  padding:8px 14px;cursor:pointer;background:none;
+  transition:all .2s;white-space:nowrap;
+}
+.ftab.on,.ftab:hover{color:var(--black);background:var(--white);border-color:var(--white)}
+.fgrid{display:none}
+.fgrid.on{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:rgba(240,236,227,.07)}
+.fcard{background:var(--black);overflow:hidden}
+.fcard iframe{display:block;width:100%;border:none}
+.fcard iframe.w{aspect-ratio:16/9}
+.fcard iframe.t{aspect-ratio:9/16;max-height:400px}
+.fcard-inf{padding:12px 16px;border-top:1px solid var(--line)}
+.fcard-t{font-size:12px;color:var(--white);margin-bottom:2px}
+.fcard-s{font-family:var(--mono);font-size:9px;color:var(--dim)}
+
+/* ── PROCESS ── */
+#process{background:#f0ece3;color:#080807;padding:100px 5vw}
+.proc-hl{
+  font-family:var(--serif);font-weight:300;
+  font-size:clamp(28px,4vw,56px);line-height:1.05;
+  margin-bottom:56px;
+}
+.proc-hl em{font-style:italic;color:#8a8478}
+.psteps{display:grid;grid-template-columns:repeat(6,1fr);gap:0;background:#c8c4bc}
+.ps{background:#f0ece3;padding:28px 20px 36px;transition:background .2s}
+.ps:hover{background:#e8e4dc}
+.ps-n{font-family:var(--mono);font-size:9px;letter-spacing:.18em;color:#c8c4bc;margin-bottom:20px;display:block}
+.ps-t{font-family:var(--serif);font-size:16px;color:#080807;margin-bottom:8px;line-height:1.2}
+.ps-d{font-size:11.5px;line-height:1.7;color:#7a7570}
+
+/* ── CTA ── */
+#cta{
+  min-height:100vh;background:var(--black);
+  display:flex;flex-direction:column;justify-content:flex-end;
+  padding:0 5vw 80px;position:relative;overflow:hidden;
+}
+.cta-bg-text{
+  position:absolute;bottom:-.1em;left:-.02em;
+  font-family:var(--serif);font-weight:300;font-style:italic;
+  font-size:clamp(160px,30vw,500px);
+  color:rgba(240,236,227,.025);line-height:1;
+  pointer-events:none;user-select:none;letter-spacing:-.04em;
+  white-space:nowrap;
+}
+.cta-content{position:relative;z-index:2}
+.cta-q{
+  font-family:var(--serif);font-weight:300;
+  font-size:clamp(48px,9vw,130px);line-height:.9;
+  letter-spacing:-.03em;color:var(--white);
+  max-width:12ch;margin-bottom:24px;
+  opacity:0;transform:translateY(28px);
+  transition:opacity 1s,transform 1s cubic-bezier(.16,1,.3,1);
+}
+.cta-q.on{opacity:1;transform:none}
+.cta-q em{font-style:italic;color:var(--dim)}
+.cta-sub{
+  font-family:var(--serif);font-style:italic;font-weight:300;
+  font-size:clamp(18px,2.5vw,36px);color:var(--dim);
+  margin-bottom:52px;max-width:20ch;
+  opacity:0;transform:translateY(16px);
+  transition:opacity 1s .2s,transform 1s .2s cubic-bezier(.16,1,.3,1);
+}
+.cta-sub.on{opacity:1;transform:none}
+.cta-row{
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  opacity:0;transform:translateY(12px);
+  transition:opacity 1s .4s,transform 1s .4s cubic-bezier(.16,1,.3,1);
+}
+.cta-row.on{opacity:1;transform:none}
+.ca{
+  font-family:var(--mono);font-size:10px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--white);text-decoration:none;
+  border:1px solid rgba(240,236,227,.2);padding:13px 22px;
+  transition:background .2s,color .2s,border-color .2s;display:inline-block;
+}
+.ca:hover,.ca.pri{background:var(--white);color:var(--black);border-color:var(--white)}
+.ca.pri:hover{background:#e0dcd4}
+/* click-to-copy email */
+.cta-email-wrap{margin-top:44px;position:relative;width:fit-content}
+.cta-email{
+  font-family:var(--serif);font-style:italic;font-weight:300;
+  font-size:clamp(16px,1.8vw,24px);color:rgba(240,236,227,.35);
+  text-decoration:none;cursor:pointer;
+  transition:color .2s;display:inline-flex;align-items:center;gap:12px;
+  opacity:0;transition:opacity 1s .6s,color .2s;
+}
+.cta-email.on{opacity:1}
+.cta-email:hover{color:rgba(240,236,227,.7)}
+.copy-hint{
+  font-family:var(--mono);font-size:8px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--dim);opacity:0;
+  transition:opacity .2s;
+}
+.cta-email:hover .copy-hint{opacity:1}
+.copy-toast{
+  position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(12px);
+  background:var(--white);color:var(--black);
+  font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;
+  padding:10px 20px;
+  opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;
+  white-space:nowrap;z-index:3000;
+}
+.copy-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+footer{
+  background:var(--black);padding:22px 5vw;
+  border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;
+}
+footer span{font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:var(--dim)}
+
+/* ── MISC REVEAL ── */
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .9s ease,transform .9s cubic-bezier(.16,1,.3,1)}
+.reveal.on{opacity:1;transform:none}
+.lbl{font-family:var(--mono);font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:12px;margin-bottom:56px}
+.lbl::after{content:attr(data-n);opacity:.3}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .nav-avail,.nav-links{display:none}
+  #hero{height:100svh}
+  .hero-h1{font-size:clamp(56px,14vw,120px)}
+  .hero-meta{flex-direction:column;align-items:flex-start;gap:24px}
+  .projects-grid{grid-template-columns:1fr}
+  .pc.wide,.pc.narrow,.pc.half,.pc.full{grid-column:span 1}
+  .lb-video-pair{grid-template-columns:1fr}
+  .lb-case{grid-template-columns:1fr}
+  .lb-cblock{border-right:none;border-bottom:1px solid var(--line)}
+  .rg,.rg2{grid-template-columns:1fr}
+  .cwall{grid-template-columns:repeat(2,1fr)}
+  .journey-layout{grid-template-columns:1fr;gap:48px}
+  .journey-left h2{position:static;margin-bottom:40px}
+  .psteps{grid-template-columns:repeat(2,1fr)}
+  .fgrid.on{grid-template-columns:1fr}
+  .pg-top{grid-template-columns:1fr}
+  .ftabs{justify-content:flex-start}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-pct" id="lp">0%</div>
+  <div class="loader-bar-track"><div class="loader-bar-fill" id="lbf"></div></div>
+  <div class="loader-name">Nihal Pareek</div>
+</div>
+
+<div id="dot"></div>
+<div id="ring"></div>
+<div class="copy-toast" id="toast">Copied to clipboard</div>
+
+<!-- NAV -->
+<nav id="nav">
+  <a href="#hero" class="nav-logo">Nihal Pareek</a>
+  <ul class="nav-links">
+    <li><a href="#work">Work</a></li>
+    <li><a href="#results">Results</a></li>
+    <li><a href="#clients">Clients</a></li>
+    <li><a href="#journey">Journey</a></li>
+    <li><a href="#cta">Contact</a></li>
+  </ul>
+  <div class="nav-r">
+    <div class="nav-avail">Available for work</div>
+  </div>
+</nav>
+
+<!-- ══ HERO ══ -->
+<section id="hero">
+  <div class="hero-video-wrap">
+    <!-- best edit as background — swap video ID here for any preferred clip -->
+    <iframe
+   src="https://www.youtube.com/embed/JZY0kaxEnnU?autoplay=1&mute=1&controls=0&rel=0&playsinline=1"
+      allow="autoplay; encrypted-media"
+      allowfullscreen>
+    </iframe>
+  </div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">Video Editor &amp; Creative Director — India</div>
+    <h1 class="hero-h1">
+      <span class="line"><span>Nihal</span></span>
+      <span class="line"><span>Pareek.</span></span>
+    </h1>
+    <div class="hero-meta">
+      <p class="hero-desc">
+        I don't just cut footage.<br>
+        I <strong>engineer attention</strong>, build audience psychology into every frame,
+        and turn content into <strong>measurable outcomes.</strong>
+      </p>
+      <div class="hero-scroll-hint">scroll</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ WORK GRID ══ -->
+<section id="work">
+  <div class="work-header reveal">
+    <h2>Selected <em>work</em></h2>
+    <span class="work-count">05 comparisons</span>
+  </div>
+
+  <div class="projects-grid">
+
+    <!-- Project 1 -->
+    <div class="pc wide" onclick="openLb(0)">
+      <div class="pc-thumb">
+        <iframe src="https://www.youtube.com/embed/c_PM1lUD1XI?autoplay=0&mute=1&controls=0" loading="lazy"></iframe>
+      </div>
+      <div class="pc-overlay"></div>
+      <div class="pc-info">
+        <div class="pc-num">01</div>
+        <div class="pc-title">Pacing & Hook Structure</div>
+        <div class="pc-tags"><span class="pc-tag">Long-form</span><span class="pc-tag">Retention</span></div>
+      </div>
+      <div class="pc-open" onclick="openLb(0)"><svg viewBox="0 0 24 24"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></div>
+    </div>
+
+    <div class="pc narrow" onclick="openLb(1)">
+      <div class="pc-thumb">
+        <iframe src="https://www.youtube.com/embed/l0Wl4-LlFNQ?autoplay=0&mute=1&controls=0" loading="lazy"></iframe>
+      </div>
+      <div class="pc-overlay"></div>
+      <div class="pc-info">
+        <div class="pc-num">02</div>
+        <div class="pc-title">Narrative Flow</div>
+        <div class="pc-tags"><span class="pc-tag">Long-form</span><span class="pc-tag">Engagement</span></div>
+      </div>
+      <div class="pc-open"><svg viewBox="0 0 24 24"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></div>
+    </div>
+
+    <div class="pc narrow" onclick="openLb(2)">
+      <div class="pc-thumb">
+        <iframe src="https://www.youtube.com/embed/T_Omv-AumSk?autoplay=0&mute=1&controls=0" loading="lazy"></iframe>
+      </div>
+      <div class="pc-overlay"></div>
+      <div class="pc-info">
+        <div class="pc-num">03</div>
+        <div class="pc-title">Emotional Architecture</div>
+        <div class="pc-tags"><span class="pc-tag">Long-form</span><span class="pc-tag">Watch Time</span></div>
+      </div>
+      <div class="pc-open"><svg viewBox="0 0 24 24"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></div>
+    </div>
+
+    <div class="pc wide" onclick="openLb(3)">
+      <div class="pc-thumb">
+        <iframe src="https://www.youtube.com/embed/1BTvgDGLfuo?autoplay=0&mute=1&controls=0" loading="lazy"></iframe>
+      </div>
+      <div class="pc-overlay"></div>
+      <div class="pc-info">
+        <div class="pc-num">04</div>
+        <div class="pc-title">Scroll-stop Hook</div>
+        <div class="pc-tags"><span class="pc-tag">Short-form</span><span class="pc-tag">Views ↑</span></div>
+      </div>
+      <div class="pc-open"><svg viewBox="0 0 24 24"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></div>
+    </div>
+
+    <div class="pc half" onclick="openLb(4)">
+      <div class="pc-thumb">
+        <iframe src="https://www.youtube.com/embed/cN55nQetOrY?autoplay=0&mute=1&controls=0" loading="lazy"></iframe>
+      </div>
+      <div class="pc-overlay"></div>
+      <div class="pc-info">
+        <div class="pc-num">05</div>
+        <div class="pc-title">Brand Launch</div>
+        <div class="pc-tags"><span class="pc-tag">Short-form</span><span class="pc-tag">Brand Lift</span></div>
+      </div>
+      <div class="pc-open"><svg viewBox="0 0 24 24"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></div>
+    </div>
+
+    <div class="pc half" onclick="openLb(5)">
+      <div class="pc-thumb">
+        <iframe src="https://www.youtube.com/embed/0OQbYwP2e08?autoplay=0&mute=1&controls=0" loading="lazy"></iframe>
+      </div>
+      <div class="pc-overlay"></div>
+      <div class="pc-info">
+        <div class="pc-num">06</div>
+        <div class="pc-title">2.3M Views System</div>
+        <div class="pc-tags"><span class="pc-tag">Short-form</span><span class="pc-tag">2.3M peak</span></div>
+      </div>
+      <div class="pc-open"><svg viewBox="0 0 24 24"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ LIGHTBOX ══ -->
+<div id="lb">
+  <div class="lb-top">
+    <span class="lb-title-small" id="lb-label">Project</span>
+    <button class="lb-close" onclick="closeLb()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  </div>
+  <div class="lb-body" id="lb-body"></div>
+</div>
+
+<!-- ══ RESULTS ══ -->
+<section id="results">
+  <div class="lbl" data-n="—">Results</div>
+  <h2 class="res-hl reveal">Editing is only valuable<br><em>if it moves numbers.</em></h2>
+
+  <div class="rg reveal">
+    <div class="rc">
+      <div class="rc-cl">Podcast Teaser Reels</div>
+      <div class="rc-t">From 10–20K to<br>100K average views</div>
+      <div class="rc-ns">
+        <div><div class="rc-n-l">Before</div><div class="rc-n-v">15K</div><div class="rc-n-d">avg per clip</div></div>
+        <div><div class="rc-n-l">After</div><div class="rc-n-v">100K+</div><div class="rc-n-d up">5–10× growth</div></div>
+      </div>
+      <div class="bar-r"><span class="bar-rl">Before</span><div class="bar-t"><div class="bar-f" style="--w:.13"></div></div></div>
+      <div class="bar-r"><span class="bar-rl">After</span><div class="bar-t"><div class="bar-f" style="--w:1"></div></div></div>
+      <div class="rc-vid"><iframe class="sh" src="https://www.youtube.com/embed/unT_lXKcY7E" allowfullscreen loading="lazy"></iframe></div>
+      <div class="rc-story">Teaser reels averaging 10–20K. Content was good — editing wasn't engineered for the platform. Rebuilt hooks, introduced pattern interrupts every 3–4 seconds. Average hit 100K.</div>
+      <div class="rc-tags"><span class="rc-tag">Hook Engineering</span><span class="rc-tag">Short-form</span><span class="rc-tag">Algorithm</span></div>
+    </div>
+    <div class="rc">
+      <div class="rc-cl">Brainstormed Reel System</div>
+      <div class="rc-t">2.3M. 600K. 580K.<br>Back to back.</div>
+      <div class="rc-ns">
+        <div><div class="rc-n-l">Avg Before</div><div class="rc-n-v">25K</div></div>
+        <div><div class="rc-n-l">Avg After</div><div class="rc-n-v">65K</div><div class="rc-n-d up">peak: 2.3M</div></div>
+      </div>
+      <div class="bar-r"><span class="bar-rl">Before</span><div class="bar-t"><div class="bar-f" style="--w:.11"></div></div></div>
+      <div class="bar-r"><span class="bar-rl">After</span><div class="bar-t"><div class="bar-f" style="--w:1"></div></div></div>
+      <div class="rc-vid"><iframe class="sh" src="https://www.youtube.com/embed/qnPfnDqH-yY" allowfullscreen loading="lazy"></iframe></div>
+      <div class="rc-story">Built a full brainstorming and experimentation system. Moved avg from 25K to 65K. Then: 2.3M, 600K, 580K, 312K, 200K, 200K consecutively. System, not luck.</div>
+      <div class="rc-tags"><span class="rc-tag">Content Strategy</span><span class="rc-tag">Viral Systems</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ CLIENTS ══ -->
+<section id="clients">
+  <div class="lbl" data-n="—">Clients</div>
+  <h2 class="clients-hl reveal">People I have <em>worked with.</em></h2>
+  <div class="mq-wrap">
+    <div class="mq-track">
+      <span class="mq-item">Flipkart</span><span class="mq-sep">·</span>
+      <span class="mq-item">Bombay Shaving Co.</span><span class="mq-sep">·</span>
+      <span class="mq-item">SUGAR Cosmetics</span><span class="mq-sep">·</span>
+      <span class="mq-item">Third Network</span><span class="mq-sep">·</span>
+      <span class="mq-item">Go Zero</span><span class="mq-sep">·</span>
+      <span class="mq-item">Lolzzz Gaming</span><span class="mq-sep">·</span>
+      <span class="mq-item">Mike Rashid</span><span class="mq-sep">·</span>
+      <span class="mq-item">Zoufry</span><span class="mq-sep">·</span>
+      <span class="mq-item">Craylyf Rohit</span><span class="mq-sep">·</span>
+      <span class="mq-item">Lasse</span><span class="mq-sep">·</span>
+      <span class="mq-item">KodeKloud</span><span class="mq-sep">·</span>
+      <span class="mq-item">Christopher Thompson</span><span class="mq-sep">·</span>
+      <span class="mq-item">Ashley Ratau</span><span class="mq-sep">·</span>
+      <span class="mq-item">Solicited Advice</span><span class="mq-sep">·</span>
+      <span class="mq-item">Tharun Speaks</span><span class="mq-sep">·</span>
+      <!-- duplicate -->
+      <span class="mq-item">Flipkart</span><span class="mq-sep">·</span>
+      <span class="mq-item">Bombay Shaving Co.</span><span class="mq-sep">·</span>
+      <span class="mq-item">SUGAR Cosmetics</span><span class="mq-sep">·</span>
+      <span class="mq-item">Third Network</span><span class="mq-sep">·</span>
+      <span class="mq-item">Go Zero</span><span class="mq-sep">·</span>
+      <span class="mq-item">Lolzzz Gaming</span><span class="mq-sep">·</span>
+      <span class="mq-item">Mike Rashid</span><span class="mq-sep">·</span>
+      <span class="mq-item">Zoufry</span><span class="mq-sep">·</span>
+      <span class="mq-item">Craylyf Rohit</span><span class="mq-sep">·</span>
+      <span class="mq-item">Lasse</span><span class="mq-sep">·</span>
+      <span class="mq-item">KodeKloud</span><span class="mq-sep">·</span>
+      <span class="mq-item">Christopher Thompson</span><span class="mq-sep">·</span>
+      <span class="mq-item">Ashley Ratau</span><span class="mq-sep">·</span>
+      <span class="mq-item">Solicited Advice</span><span class="mq-sep">·</span>
+      <span class="mq-item">Tharun Speaks</span><span class="mq-sep">·</span>
+    </div>
+  </div>
+  <div class="cwall reveal">
+    <div class="ctile"><div class="ctile-mark">F</div><div class="ctile-name">Flipkart</div><div class="ctile-sub">E-Commerce</div></div>
+    <div class="ctile"><div class="ctile-mark">B</div><div class="ctile-name">Bombay Shaving Co.</div><div class="ctile-sub">Grooming · D2C</div></div>
+    <div class="ctile"><div class="ctile-mark">S</div><div class="ctile-name">SUGAR Cosmetics</div><div class="ctile-sub">Beauty · Vineeta Singh</div></div>
+    <div class="ctile"><div class="ctile-mark">3</div><div class="ctile-name">Third Network</div><div class="ctile-sub">Media Network</div></div>
+    <div class="ctile"><div class="ctile-mark">G</div><div class="ctile-name">Go Zero</div><div class="ctile-sub">Ice Creams · Kiran Shah</div></div>
+    <div class="ctile"><div class="ctile-mark">L</div><div class="ctile-name">Lolzzz Gaming</div><div class="ctile-sub">Gaming · Creator</div></div>
+    <div class="ctile"><div class="ctile-mark">M</div><div class="ctile-name">Mike Rashid</div><div class="ctile-sub">Fitness · Creator</div></div>
+    <div class="ctile"><div class="ctile-mark">Z</div><div class="ctile-name">Zoufry</div><div class="ctile-sub">Creator</div></div>
+    <div class="ctile"><div class="ctile-mark">C</div><div class="ctile-name">Craylyf Rohit</div><div class="ctile-sub">YouTube · Delhi</div></div>
+    <div class="ctile"><div class="ctile-mark">L</div><div class="ctile-name">Lasse</div><div class="ctile-sub">Creator</div></div>
+    <div class="ctile"><div class="ctile-mark">K</div><div class="ctile-name">KodeKloud</div><div class="ctile-sub">Tech Education</div></div>
+    <div class="ctile"><div class="ctile-mark">C</div><div class="ctile-name">Christopher Thompson</div><div class="ctile-sub">Creator · Coach</div></div>
+    <div class="ctile"><div class="ctile-mark">A</div><div class="ctile-name">Ashley Ratau</div><div class="ctile-sub">Creator</div></div>
+    <div class="ctile"><div class="ctile-mark">S</div><div class="ctile-name">Solicited Advice</div><div class="ctile-sub">Podcast</div></div>
+    <div class="ctile"><div class="ctile-mark">T</div><div class="ctile-name">Tharun Speaks</div><div class="ctile-sub">Podcast · Creator</div></div>
+  </div>
+</section>
+
+<!-- ══ PLAYGROUND ══ -->
+<section id="playground">
+  <div class="lbl" data-n="—">Versatility</div>
+  <div class="pg-top reveal">
+    <h2>Different styles,<br><em>same obsession.</em></h2>
+    <div class="ftabs">
+      <button class="ftab on" onclick="fTab(this,'fl')">Logo Animation</button>
+      <button class="ftab" onclick="fTab(this,'fg')">General Edits</button>
+      <button class="ftab" onclick="fTab(this,'fb')">Brand Launch</button>
+    </div>
+  </div>
+  <div class="fgrid on" id="fl">
+    <div class="fcard"><iframe class="w" src="https://www.youtube.com/embed/p_qK6cjlyY0" allowfullscreen loading="lazy"></iframe><div class="fcard-inf"><div class="fcard-t">Logo Animation 01</div><div class="fcard-s">Branding · Motion Design</div></div></div>
+    <div class="fcard"><iframe class="w" src="https://www.youtube.com/embed/27pZThddQ3w" allowfullscreen loading="lazy"></iframe><div class="fcard-inf"><div class="fcard-t">Logo Animation 02</div><div class="fcard-s">Branding · Motion Design</div></div></div>
+    <div class="fcard"><iframe class="w" src="https://www.youtube.com/embed/tloV6UA2_e0" allowfullscreen loading="lazy"></iframe><div class="fcard-inf"><div class="fcard-t">Logo Animation 03</div><div class="fcard-s">Branding · Motion Design</div></div></div>
+    <div class="fcard"><iframe class="w" src="https://www.youtube.com/embed/obIsA7dM97k" allowfullscreen loading="lazy"></iframe><div class="fcard-inf"><div class="fcard-t">Logo Animation 04</div><div class="fcard-s">Branding · Motion Design</div></div></div>
+    <div class="fcard"><iframe class="t" src="https://www.youtube.com/embed/4WWAokDNdVY" allowfullscreen loading="lazy"></iframe><div class="fcard-inf"><div class="fcard-t">Logo Animation 05</div><div class="fcard-s">Short-form</div></div></div>
+  </div>
+  <div class="fgrid" id="fg">
+    <div class="fcard"><iframe class="t" src="https://www.youtube.com/embed/udh7wkhypYY" allowfullscreen loading="lazy"></iframe><div class="fcard-inf"><div class="fcard-t">General Edit 01</div><div class="fcard-s">Short-form</div></div></div>
+    <div class="fcard"><iframe class="t" src="https://www.youtube.com/embed/W3mz2hbUVvI" allowfullscreen loading="lazy"></iframe><div class="fcard-inf"><div class="fcard-t">General Edit 02</div><div class="fcard-s">Short-form</div></div></div>
+    <div class="fcard"><iframe class="t" src="https://www.youtube.com/embed/8mMgl_nR9Ag" allowfullscreen loading="lazy"></iframe><div class="fcard-inf"><div class="fcard-t">General Edit 03</div><div class="fcard-s">Short-form</div></div></div>
+    <div class="fcard"><iframe class="t" src="https://www.youtube.com/embed/-J_1YDwKsK8" allowfullscreen loading="lazy"></iframe><div class="fcard-inf"><div class="fcard-t">General Edit 04</div><div class="fcard-s">Short-form</div></div></div>
+    <div class="fcard"><iframe class="t" src="https://www.youtube.com/embed/xBXXZnxTUdE" allowfullscreen loading="lazy"></iframe><div class="fcard-inf"><div class="fcard-t">General Edit 05</div><div class="fcard-s">Short-form</div></div></div>
+    <div class="fcard"><iframe class="w" src="https://www.youtube.com/embed/y_YY2JUiYvc" allowfullscreen loading="lazy"></iframe><div class="fcard-inf"><div class="fcard-t">General Edit 06</div><div class="fcard-s">Long-form</div></div></div>
+    <div class="fcard"><iframe class="w" src="https://www.youtube.com/embed/kV83Jr8wnsw" allowfullscreen loading="lazy"></iframe><div class="fcard-inf"><div class="fcard-t">General Edit 07</div><div class="fcard-s">Long-form</div></div></div>
+    <div class="fcard"><iframe class="w" src="https://www.youtube.com/embed/fVAkxXFUQGc" allowfullscreen loading="lazy"></iframe><div class="fcard-inf"><div class="fcard-t">General Edit 08</div><div class="fcard-s">Long-form</div></div></div>
+    <div class="fcard"><iframe class="w" src="https://www.youtube.com/embed/kYSlSwwORNE" allowfullscreen loading="lazy"></iframe><div class="fcard-inf"><div class="fcard-t">General Edit 09</div><div class="fcard-s">Long-form</div></div></div>
+  </div>
+  <div class="fgrid" id="fb">
+    <div class="fcard"><iframe class="t" src="https://www.youtube.com/embed/uK8Z-5_Kq1A" allowfullscreen loading="lazy"></iframe><div class="fcard-inf"><div class="fcard-t">Brand Launch — Before</div><div class="fcard-s">Original cut</div></div></div>
+    <div class="fcard"><iframe class="t" src="https://www.youtube.com/embed/cN55nQetOrY" allowfullscreen loading="lazy"></iframe><div class="fcard-inf"><div class="fcard-t">Brand Launch — After</div><div class="fcard-s">Final edit</div></div></div>
+  </div>
+</section>
+
+<!-- ══ JOURNEY ══ -->
+<section id="journey">
+  <div class="lbl" data-n="—">Journey</div>
+  <div class="journey-layout">
+    <div class="journey-left reveal"><h2>The <em>timeline.</em></h2></div>
+    <div class="jlist">
+      <div class="ji"><div class="ji-yr">Jun 2019</div><div class="ji-t">The first cut. Freelance begins.</div><div class="ji-b">Started freelancing at 14. No formal training — just obsession and YouTube tutorials. Took any project that came. Learned by doing everything wrong first.</div><div class="ji-tags"><span class="ji-tag">Premiere Pro</span><span class="ji-tag">Self-taught</span></div></div>
+      <div class="ji major"><div class="ji-yr">Jan 2021 – Nov 2022</div><div class="ji-t">RMS Stonex — 3D & Motion.</div><div class="ji-b">3D Graphic Designer in Kishangarh. Learned how visual language works at a spatial level. Every lesson fed back into editing.</div><div class="ji-tags"><span class="ji-tag">3D Design</span><span class="ji-tag">Motion Graphics</span></div></div>
+      <div class="ji"><div class="ji-yr">Dec 2022 – Jun 2023</div><div class="ji-t">Stadeos Infotech — Video & Design.</div><div class="ji-b">Dual role as editor and graphic designer. Started understanding that every frame is a design decision, not just a cut.</div><div class="ji-tags"><span class="ji-tag">Video Editing</span><span class="ji-tag">Graphic Design</span></div></div>
+      <div class="ji"><div class="ji-yr">Jun – Oct 2023</div><div class="ji-t">Aasvaa Universal — Animation.</div><div class="ji-b">Animator in Jaipur. Timing, rhythm, follow-through — every animation principle translated into editorial instinct.</div><div class="ji-tags"><span class="ji-tag">Animation</span><span class="ji-tag">After Effects</span></div></div>
+      <div class="ji major"><div class="ji-yr">Apr 2024 – Jun 2025</div><div class="ji-t">Creator Growth Group — Creative Director.</div><div class="ji-b">Led creative direction for a US-based creator company. Built content strategy systems from scratch.</div><div class="ji-tags"><span class="ji-tag">Creative Direction</span><span class="ji-tag">Content Strategy</span><span class="ji-tag">US Market</span></div></div>
+      <div class="ji"><div class="ji-yr">Sep – Dec 2024</div><div class="ji-t">Craylyf Rohit — YouTube Editor.</div><div class="ji-b">Applied retention engineering and hook architecture to long-form content for a prominent Delhi creator.</div><div class="ji-tags"><span class="ji-tag">YouTube Strategy</span><span class="ji-tag">Retention</span></div></div>
+      <div class="ji"><div class="ji-yr">Oct 2025 – Jan 2026</div><div class="ji-t">Indian Video School — Mentor.</div><div class="ji-b">Mentored 400+ students in editing, content creation, and social media growth systems.</div><div class="ji-tags"><span class="ji-tag">Mentorship</span><span class="ji-tag">400+ Students</span></div></div>
+      <div class="ji major"><div class="ji-yr">Nov 2025 — Present</div><div class="ji-t">YOSO Media — Senior Video Editor.</div><div class="ji-b">Leading content for Bombay Shaving Company at YOSO Media. Operating at the intersection of creative execution and content strategy.Building content systems which gain views and reflect business. </div><div class="ji-tags"><span class="ji-tag">Senior Editing</span><span class="ji-tag">Content Systems</span><span class="ji-tag">Strategy</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ PROCESS ══ -->
+<section id="process">
+  <div class="lbl" style="color:#8a8478" data-n="—">Process</div>
+  <div class="proc-hl reveal">How I <em>work.</em></div>
+  <div class="psteps reveal">
+    <div class="ps"><span class="ps-n">01</span><div class="ps-t">Understand the goal.</div><div class="ps-d">What does success look like? A view? A sale? A subscriber? A feeling?</div></div>
+    <div class="ps"><span class="ps-n">02</span><div class="ps-t">Find the audience.</div><div class="ps-d">Who's watching? What do they believe? What do they need to feel to act?</div></div>
+    <div class="ps"><span class="ps-n">03</span><div class="ps-t">Build the hook.</div><div class="ps-d">First 3 seconds. Open loops, pattern interrupts, curiosity gaps. Engineered, not felt.</div></div>
+    <div class="ps"><span class="ps-n">04</span><div class="ps-t">Engineer retention.</div><div class="ps-d">Every cut is a decision. Every silence is intentional. Pacing is calculated.</div></div>
+    <div class="ps"><span class="ps-n">05</span><div class="ps-t">Iterate using data.</div><div class="ps-d">Read the retention graphs. Find drop-off points. Fix them. Never stop.</div></div>
+    <div class="ps"><span class="ps-n">06</span><div class="ps-t">Measure outcomes.</div><div class="ps-d">Work is finished when the result is confirmed. That's the real brief.</div></div>
+  </div>
+</section>
+
+<!-- ══ CTA ══ -->
+<section id="cta">
+  <div class="cta-bg-text">Contact</div>
+  <div class="cta-content">
+    <h2 class="cta-q" id="cq">Looking for<br>an editor?</h2>
+    <p class="cta-sub" id="cs">Or someone who understands<br>why content succeeds.</p>
+    <div class="cta-row" id="cr">
+      <a href="mailto:nihalpareek2005@gmail.com" class="ca pri">Book a Call</a>
+      <a href="https://www.linkedin.com/in/nihal-pareek-" target="_blank" class="ca">LinkedIn ↗</a>
+      <a href="https://nihal-pareek.framer.media/" target="_blank" class="ca">Portfolio ↗</a>
+      <a href="tel:+917850044915" class="ca">+91 7850044915</a>
+    </div>
+    <div class="cta-email-wrap">
+      <span class="cta-email" id="ce" onclick="copyEmail()">
+        nihalpareek2005@gmail.com
+        <span class="copy-hint">click to copy</span>
+      </span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span>Nihal Pareek — Video Editor & Creative Director</span>
+  <span>India</span>
+  <span>nihalpareek2005@gmail.com</span>
+  <span>+91 7850044915</span>
+</footer>
+
+<!-- LIGHTBOX DATA -->
+<script>
+const PROJECTS = [
+  {
+    label:"01 — Pacing & Hook Structure",
+    before:{id:"vQ3UixrpwL0",type:"w"},
+    after:{id:"c_PM1lUD1XI",type:"w"},
+    meta:[{l:"Format",v:"Long-form"},{l:"Focus",v:"Pacing & Hook"},{l:"Platform",v:"YouTube"},{l:"Outcome",v:"Retention ↑"}],
+    problem:"Flat opening. No reason to stay. Best content buried 2 minutes in.",
+    approach:"Restructured around a curiosity gap. Pulled the hook. Cut all filler. Rebuilt pacing from scratch.",
+    result:"Measurably stronger retention curve.",
+    stat:"Retention ↑"
+  },
+  {
+    label:"02 — Narrative Flow",
+    before:{id:"fAWPYy7hsXc",type:"w"},
+    after:{id:"l0Wl4-LlFNQ",type:"w"},
+    meta:[{l:"Format",v:"Long-form"},{l:"Focus",v:"Narrative Flow"},{l:"Platform",v:"YouTube"},{l:"Outcome",v:"Engagement ↑"}],
+    problem:"Strong content, conventional opening. The algorithm didn't reward patience.",
+    approach:"Pattern interrupt in second one. Introduced visual and audio hook. Rebuilt flow to sustain across the full runtime.",
+    result:"Better hook performance, stronger audience retention.",
+    stat:"Engagement ↑"
+  },
+  {
+    label:"03 — Emotional Architecture",
+    before:{id:"DSM6W5fwjy0",type:"w"},
+    after:{id:"T_Omv-AumSk",type:"w"},
+    meta:[{l:"Format",v:"Long-form"},{l:"Focus",v:"Emotional Arc"},{l:"Platform",v:"YouTube"},{l:"Outcome",v:"Watch Time ↑"}],
+    problem:"Great material, no tension. Felt like information delivery, not storytelling.",
+    approach:"Introduced narrative tension through rhythm. Silence, music cuts, visual emphasis created peaks and valleys.",
+    result:"Viewers feeling emotional connection for the first time on this channel.",
+    stat:"Watch time ↑"
+  },
+  {
+    label:"04 — Scroll-stop Hook",
+    before:{id:"SuRKbOyoG8M",type:"t"},
+    after:{id:"1BTvgDGLfuo",type:"t"},
+    meta:[{l:"Format",v:"Short-form"},{l:"Focus",v:"Scroll-stop"},{l:"Platform",v:"YouTube Shorts"},{l:"Outcome",v:"Views ↑"}],
+    problem:"Short wasn't stopping the scroll. Opening frame had no visual or auditory hook.",
+    approach:"Redesigned frame one entirely. Kinetic subtitles, motion-matched cuts, open loop in first second.",
+    result:"Significant scroll-stop rate improvement and views lift.",
+    stat:"Scroll-stop ↑"
+  },
+  {
+    label:"05 — Brand Launch",
+    before:{id:"uK8Z-5_Kq1A",type:"t"},
+    after:{id:"cN55nQetOrY",type:"t"},
+    meta:[{l:"Format",v:"Short-form / Reel"},{l:"Focus",v:"Brand Impact"},{l:"Platform",v:"Instagram"},{l:"Outcome",v:"Brand Lift ↑"}],
+    problem:"Launch content blended in. No visual punch. Brand ambition wasn't matching the edit.",
+    approach:"Elevated the visual language entirely. Every cut synced to music for maximum emotional impact.",
+    result:"Launch video drove brand awareness far beyond projections.",
+    stat:"Brand lift ↑"
+  },
+  {
+    label:"06 — 2.3M Views System",
+    before:{id:"GkhZZMz02S8",type:"t"},
+    after:{id:"0OQbYwP2e08",type:"t"},
+    meta:[{l:"Avg Before",v:"20–30K"},{l:"Avg After",v:"60–70K"},{l:"Peak",v:"2.3M"},{l:"Outcome",v:"System Built"}],
+    problem:"Reels weren't brainstormed — they were reacted to. No strategy behind the content.",
+    approach:"Built a full brainstorming and experimentation system. Every reel had a clear strategic objective before editing began.",
+    result:"2.3M, 600K, 580K, 312K, 200K, 200K consecutively.",
+    stat:"2.3M peak"
+  }
+];
+
+function openLb(i){
+  const p=PROJECTS[i];
+  document.getElementById('lb-label').textContent=p.label;
+  document.getElementById('lb-body').innerHTML=`
+    <div class="lb-meta">${p.meta.map(m=>`<div class="lb-met"><div class="lb-met-l">${m.l}</div><div class="lb-met-v">${m.v}</div></div>`).join('')}</div>
+    <div class="lb-video-pair">
+      <div class="lb-vid-side"><span class="lb-vtag">RAW</span><iframe class="${p.before.type}" src="https://www.youtube.com/embed/${p.before.id}" allowfullscreen loading="lazy"></iframe></div>
+      <div class="lb-vid-side"><span class="lb-vtag">FINAL</span><iframe class="${p.after.type}" src="https://www.youtube.com/embed/${p.after.id}" allowfullscreen loading="lazy"></iframe></div>
+    </div>
+    <div class="lb-case">
+      <div class="lb-cblock"><div class="lb-cblock-l">Problem</div><p>${p.problem}</p></div>
+      <div class="lb-cblock"><div class="lb-cblock-l">Approach</div><p>${p.approach}</p></div>
+      <div class="lb-cblock"><div class="lb-cblock-l">Result</div><p>${p.result}</p><div class="lb-stat">${p.stat}</div></div>
+    </div>`;
+  document.getElementById('lb').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeLb(){
+  document.getElementById('lb').classList.remove('open');
+  document.getElementById('lb-body').innerHTML='';
+  document.body.style.overflow='';
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLb()});
+
+/* CURSOR */
+const dot=document.getElementById('dot'),ring=document.getElementById('ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;dot.style.left=mx+'px';dot.style.top=my+'px'});
+(function r(){rx+=(mx-rx)*.1;ry+=(my-ry)*.1;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(r)})();
+document.querySelectorAll('a,button,.pc,.ctile,.rc').forEach(el=>{
+  el.addEventListener('mouseenter',()=>document.body.classList.add('cur-grow'));
+  el.addEventListener('mouseleave',()=>document.body.classList.remove('cur-grow'));
+});
+
+/* NAV SCROLL */
+window.addEventListener('scroll',()=>{
+  document.getElementById('nav').classList.toggle('scrolled',scrollY>60);
+},{passive:true});
+
+/* SCROLL REVEAL */
+const obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('on')}),{threshold:.08});
+document.querySelectorAll('.reveal,.ji').forEach(el=>obs.observe(el));
+
+/* BAR CHARTS */
+const bobs=new IntersectionObserver(es=>{
+  es.forEach(e=>{
+    if(e.isIntersecting) e.target.querySelectorAll('.bar-f').forEach((b,i)=>{
+      setTimeout(()=>b.style.transform=`scaleX(${parseFloat(b.style.getPropertyValue('--w')||1)})`,i*200);
+    });
+  });
+},{threshold:.3});
+document.querySelectorAll('.rc').forEach(el=>bobs.observe(el));
+
+/* CTA REVEAL */
+const cobs=new IntersectionObserver(es=>{
+  es.forEach(e=>{
+    if(e.isIntersecting){
+      ['cq','cs','cr','ce'].forEach(id=>document.getElementById(id).classList.add('on'));
+    }
+  });
+},{threshold:.15});
+cobs.observe(document.getElementById('cta'));
+
+/* FOLDER TABS */
+function fTab(btn,id){
+  document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.fgrid').forEach(f=>f.classList.remove('on'));
+  btn.classList.add('on');document.getElementById(id).classList.add('on');
+}
+
+/* COPY EMAIL */
+function copyEmail(){
+  navigator.clipboard.writeText('nihalpareek2005@gmail.com').then(()=>{
+    const t=document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'),2200);
+  });
+}
+
+/* LOADER */
+(function(){
+  const pct=document.getElementById('lp'),fill=document.getElementById('lbf');
+  let p=0;
+  const iv=setInterval(()=>{
+    p+=Math.random()*12+3;
+    if(p>=100){p=100;clearInterval(iv);setTimeout(()=>document.getElementById('loader').classList.add('done'),300)}
+    pct.textContent=Math.floor(p)+'%';
+    fill.style.width=p+'%';
+  },60);
+})();
+</script>
+</body>
+</html>
